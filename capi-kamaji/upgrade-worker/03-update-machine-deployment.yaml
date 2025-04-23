@@ -1,0 +1,24 @@
+# File ini masih sama seperti file 2, hanya saja mengedit infrastructureRef.name
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: febri4n-nyoba-capi-kamaji-worker
+  namespace: default
+spec:
+  clusterName: febri4n-nyoba-capi-kamaji
+  replicas: 3
+  template:
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: febri4n-nyoba-capi-kamaji
+      clusterName: febri4n-nyoba-capi-kamaji
+      failureDomain: AZ_Public01_JBBK
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: OpenStackMachineTemplate
+        name: febri4n-nyoba-capi-kamaji-upgrade
+      version: 1.30.2
