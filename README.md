@@ -19,4 +19,5 @@ export KUBERNETES_VERSION="v1.30.2"
 ```bash
 wget https://raw.githubusercontent.com/kubernetes-sigs/cluster-api-provider-openstack/master/templates/env.rc -O /tmp/env.rc
 source /tmp/env.rc clouds.yaml openstack
+```
 3. Jika CAPI dan Kamaji sudah berjalan, maka bisa mencoba CAPI OpenStack Kamaji
