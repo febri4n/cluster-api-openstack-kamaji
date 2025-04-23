@@ -1,0 +1,19 @@
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: febri4n-nyoba-capi-kamaji-upgrade
+  namespace: default
+spec:
+  template:
+    spec:
+      flavor: GP.4C8G-intel
+      image:
+        filter:
+          name: "capi-ubuntu-2204-kube-v1.30.2"
+      sshKeyName: febri4n
+      identityRef:
+        name: febri4n-nyoba-capi-kamaji-cloud-config
+        cloudName: openstack
+      ports:
+      - network:
+          id: f9881508-7de0-488e-a4ff-c437f4c8687f
