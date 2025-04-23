@@ -1,0 +1,28 @@
+apiVersion: kamaji.clastix.io/v1alpha1
+kind: TenantControlPlane
+metadata:
+  name: febri4n-tenant-tcp
+  namespace: kamaji-tcp
+spec:
+  dataStore: kamaji-etcd
+  controlPlane:
+    deployment:
+      replicas: 3
+    service:
+      serviceType: LoadBalancer
+  kubernetes:
+    version: "v1.30.2"
+    kubelet:
+      cgroupfs: systemd
+      preferredAddressTypes:
+      - InternalIP
+  networkProfile:
+    port: 6443
+  addons:
+    coreDNS: {}
+    kubeProxy: {}
+    konnectivity:
+      server:
+        port: 8132
+        resources: {}
+      agent: {}

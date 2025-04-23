@@ -21,3 +21,5 @@ wget https://raw.githubusercontent.com/kubernetes-sigs/cluster-api-provider-open
 source /tmp/env.rc clouds.yaml openstack
 ```
 3. Jika CAPI dan Kamaji sudah berjalan, maka bisa mencoba CAPI OpenStack Kamaji
+
+> Note: Kamaji stable sampai saat ini hanya mendukung versi 1.30.2, jika ingin lebih dari itu gunakan versi edge release
