@@ -1,0 +1,180 @@
+apiVersion: v1
+data:
+  cacert: Cg==
+  clouds.yaml: #REDACTED BASE64 ENCODE
+kind: Secret
+metadata:
+  labels:
+    clusterctl.cluster.x-k8s.io/move: "true"
+  name: febri4n-nyoba-capi-kamaji-cloud-config
+  namespace: default
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+spec:
+  clusterNetwork:
+    serviceDomain: cluster.local
+    pods:
+      cidrBlocks:
+      - 10.244.0.0/16
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+    kind: KamajiControlPlane
+    name: febri4n-nyoba-capi-kamaji
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: OpenStackCluster
+    name: febri4n-nyoba-capi-kamaji
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackCluster
+metadata:
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+spec:
+  apiServerLoadBalancer:
+    enabled: false
+  controlPlaneAvailabilityZones:
+    - AZ_Public01_JBBK
+  disableAPIServerFloatingIP: true
+  disableExternalNetwork: true
+  apiServerFixedIP: ""
+  network:
+    id: f9881508-7de0-488e-a4ff-c437f4c8687f
+  subnets:
+  - id: cc7d6dbb-9dec-4184-82f2-fdfe8749e231
+  identityRef:
+    cloudName: openstack
+    name: febri4n-nyoba-capi-kamaji-cloud-config
+  managedSecurityGroups:
+    allowAllInClusterTraffic: false
+    allNodesSecurityGroupRules:
+    - remoteManagedGroups:
+      - worker
+      direction: ingress
+      etherType: IPv4
+      name: BGP
+      portRangeMin: 179
+      portRangeMax: 179
+      protocol: "tcp"
+      description: "Allow BGP among Workers"
+    - remoteManagedGroups:
+      - worker
+      direction: ingress
+      etherType: IPv4
+      name: IP-in-IP
+      protocol: "4"
+      description: "Allow IP-in-IP among Workers"
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: KamajiControlPlane
+metadata:
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+spec:
+  replicas: 3
+  version: 1.30.2
+  dataStoreName: kamaji-etcd
+  addons:
+    coreDNS: {}
+    kubeProxy: {}
+    konnectivity: {}
+  kubelet:
+    preferredAddressTypes:
+      - InternalIP
+      - ExternalIP
+      - Hostname
+  network:
+    serviceType: LoadBalancer
+    serviceAnnotations:
+      service.beta.kubernetes.io/openstack-internal-load-balancer: "false"
+      loadbalancer.openstack.org/floating-network-id: f9881508-7de0-488e-a4ff-c437f4c8687f
+  controllerManager:
+    extraArgs:
+    - --cloud-provider=external
+  apiServer:
+    extraArgs:
+    - --cloud-provider=external
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: febri4n-nyoba-capi-kamaji-worker
+  namespace: default
+spec:
+  clusterName: febri4n-nyoba-capi-kamaji
+  replicas: 3
+  template:
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: febri4n-nyoba-capi-kamaji
+      clusterName: febri4n-nyoba-capi-kamaji
+      failureDomain: AZ_Public01_JBBK
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: OpenStackMachineTemplate
+        name: febri4n-nyoba-capi-kamaji
+      version: 1.30.2
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+spec:
+  template:
+    spec:
+      flavor: GP.2C4G-intel
+      image:
+        filter:
+          name: "capi-ubuntu-2204-kube-v1.30.2"
+      sshKeyName: febri4n
+      identityRef:
+        name: febri4n-nyoba-capi-kamaji-cloud-config
+        cloudName: openstack
+      ports:
+      - network:
+          id: f9881508-7de0-488e-a4ff-c437f4c8687f
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+spec:
+  template:
+    spec:
+      files: []
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+            cloud-provider: external
+            provider-id: openstack:///'{{ instance_id }}'
+          name: '{{ local_hostname }}'
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineHealthCheck
+metadata:
+  name: febri4n-nyoba-capi-kamaji-worker-health
+  namespace: default
+spec:
+  clusterName: febri4n-nyoba-capi-kamaji
+  nodeStartupTimeout: 10m
+  maxUnhealthy: 40%
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: febri4n-nyoba-capi-kamaji
+      cluster.x-k8s.io/deployment-name: febri4n-nyoba-capi-kamaji-worker
+  unhealthyConditions:
+    - type: Ready
+      status: Unknown
+      timeout: 300s
+    - type: Ready
+      status: "False"
+      timeout: 300s
