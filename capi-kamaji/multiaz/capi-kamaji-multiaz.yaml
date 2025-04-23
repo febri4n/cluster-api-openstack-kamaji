@@ -1,0 +1,245 @@
+apiVersion: v1
+data:
+  cacert: Cg==
+  clouds.yaml: #REDACTED BASE64 ENCODE
+kind: Secret
+metadata:
+  labels:
+    clusterctl.cluster.x-k8s.io/move: "true"
+  name: febri4n-multiaz-cloud-config
+  namespace: default
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: febri4n-multiaz
+  namespace: default
+spec:
+  clusterNetwork:
+    serviceDomain: cluster.local
+    pods:
+      cidrBlocks:
+      - 10.244.0.0/16
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+    kind: KamajiControlPlane
+    name: febri4n-multiaz-capi-kamaji
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: OpenStackCluster
+    name: febri4n-multiaz-capi-kamaji
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackCluster
+metadata:
+  name: febri4n-multiaz-capi-kamaji
+  namespace: default
+spec:
+  apiServerLoadBalancer:
+    enabled: false
+  controlPlaneAvailabilityZones:
+    - AZ_Public01_JBBK
+  disableAPIServerFloatingIP: true
+  disableExternalNetwork: true
+  apiServerFixedIP: ""
+  network:
+    id: f9881508-7de0-488e-a4ff-c437f4c8687f
+  subnets:
+  - id: cc7d6dbb-9dec-4184-82f2-fdfe8749e231
+  identityRef:
+    cloudName: openstack
+    name: febri4n-multiaz-cloud-config
+  managedSecurityGroups:
+    allowAllInClusterTraffic: false
+    allNodesSecurityGroupRules:
+    - remoteManagedGroups:
+      - worker
+      direction: ingress
+      etherType: IPv4
+      name: BGP
+      portRangeMin: 179
+      portRangeMax: 179
+      protocol: "tcp"
+      description: "Allow BGP among Workers"
+    - remoteManagedGroups:
+      - worker
+      direction: ingress
+      etherType: IPv4
+      name: IP-in-IP
+      protocol: "4"
+      description: "Allow IP-in-IP among Workers"
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: KamajiControlPlane
+metadata:
+  name: febri4n-multiaz-capi-kamaji
+  namespace: default
+spec:
+  replicas: 3
+  version: 1.30.2
+  dataStoreName: kamaji-etcd
+  addons:
+    coreDNS: {}
+    kubeProxy: {}
+    konnectivity: {}
+  kubelet:
+    preferredAddressTypes:
+      - InternalIP
+      - ExternalIP
+      - Hostname
+  network:
+    serviceType: LoadBalancer
+    serviceAnnotations:
+      service.beta.kubernetes.io/openstack-internal-load-balancer: "false"
+      loadbalancer.openstack.org/floating-network-id: f9881508-7de0-488e-a4ff-c437f4c8687f
+  controllerManager:
+    extraArgs:
+    - --cloud-provider=external
+  apiServer:
+    extraArgs:
+    - --cloud-provider=external
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: febri4n-multiaz-dc2
+  namespace: default
+spec:
+  clusterName: febri4n-multiaz
+  replicas: 1
+  template:
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: febri4n-multiaz-kubeadmconfig
+      clusterName: febri4n-multiaz
+      failureDomain: AZ_Public01_DC2
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: OpenStackMachineTemplate
+        name: febri4n-multiaz-dc2
+      version: 1.30.2
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: febri4n-multiaz-dc3
+  namespace: default
+spec:
+  clusterName: febri4n-multiaz
+  replicas: 1
+  template:
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: febri4n-multiaz-kubeadmconfig
+      clusterName: febri4n-multiaz
+      failureDomain: AZ_Public01_DC3
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: OpenStackMachineTemplate
+        name: febri4n-multiaz-dc3
+      version: 1.30.2
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: febri4n-multiaz-jbbk
+  namespace: default
+spec:
+  clusterName: febri4n-multiaz
+  replicas: 1
+  template:
+    spec:
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: febri4n-multiaz-kubeadmconfig
+      clusterName: febri4n-multiaz
+      failureDomain: AZ_Public01_JBBK
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: OpenStackMachineTemplate
+        name: febri4n-multiaz-jbbk
+      version: 1.30.2
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: febri4n-multiaz-dc2
+  namespace: default
+spec:
+  template:
+    spec:
+      flavor: GP.2C4G
+      image:
+        filter:
+          name: "capi-ubuntu-2204-kube-v1.30.2"
+      sshKeyName: febri4n
+      identityRef:
+        name: febri4n-multiaz-cloud-config
+        cloudName: openstack
+      ports:
+      - network:
+          id: 5fe9629f-6404-4b6b-bbb8-47b2bf983eae
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: febri4n-multiaz-dc3
+  namespace: default
+spec:
+  template:
+    spec:
+      flavor: GP.2C4G
+      image:
+        filter:
+          name: "capi-ubuntu-2204-kube-v1.30.2"
+      sshKeyName: febri4n
+      identityRef:
+        name: febri4n-multiaz-cloud-config
+        cloudName: openstack
+      ports:
+      - network:
+          id: 03cbe6da-6e7e-4184-af36-e64b9341de48
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: OpenStackMachineTemplate
+metadata:
+  name: febri4n-multiaz-jbbk
+  namespace: default
+spec:
+  template:
+    spec:
+      flavor: GP.2C4G-intel
+      image:
+        filter:
+          name: "capi-ubuntu-2204-kube-v1.30.2"
+      sshKeyName: febri4n
+      identityRef:
+        name: febri4n-multiaz-cloud-config
+        cloudName: openstack
+      ports:
+      - network:
+          id: f9881508-7de0-488e-a4ff-c437f4c8687f
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: febri4n-multiaz-kubeadmconfig
+  namespace: default
+spec:
+  template:
+    spec:
+      files: []
+      joinConfiguration:
+        nodeRegistration:
+          kubeletExtraArgs:
+            cloud-provider: external
+            provider-id: openstack:///'{{ instance_id }}'
+          name: '{{ local_hostname }}'
