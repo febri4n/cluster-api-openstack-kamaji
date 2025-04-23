@@ -20,6 +20,6 @@ export KUBERNETES_VERSION="v1.30.2"
 wget https://raw.githubusercontent.com/kubernetes-sigs/cluster-api-provider-openstack/master/templates/env.rc -O /tmp/env.rc
 source /tmp/env.rc clouds.yaml openstack
 ```
-3. Jika CAPI dan Kamaji sudah berjalan, maka bisa mencoba CAPI OpenStack Kamaji
+3. Jika CAPI dan Kamaji sudah berjalan, maka bisa mencoba CAPI OpenStack Kamaji. Saat mencoba CAPI OpenStack Kamaji, gunakan secret yang sudah dibuat dari hasil generate saat menjalankan atau berhasil membuat cluster di CAPI.
 
 > Note: Kamaji stable sampai saat ini hanya mendukung versi 1.30.2, jika ingin lebih dari itu gunakan versi edge release
