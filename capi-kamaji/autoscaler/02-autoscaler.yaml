@@ -1,0 +1,210 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: febri4n-nyoba-capi-kamaji-autoscaler
+  namespace: default
+  labels:
+    app: febri4n-nyoba-capi-kamaji-autoscaler
+spec:
+  selector:
+    matchLabels:
+      app: febri4n-nyoba-capi-kamaji-autoscaler
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: febri4n-nyoba-capi-kamaji-autoscaler
+    spec:
+      containers:
+      - image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.30.0
+        name: cluster-autoscaler
+        command:
+        - /cluster-autoscaler
+        args:
+        # Define CAPI Cloud Provider
+        - --cloud-provider=clusterapi
+        - --node-group-auto-discovery=clusterapi:namespace=default,clusterName=febri4n-nyoba-capi-kamaji
+        # Kubeconfig of Workload Cluster inside the pod of autoscaler
+        - --kubeconfig=/mnt/kubeconfig/febri4n-nyoba-capi-kamaji.kubeconfig
+        - --clusterapi-cloud-config-authoritative
+        - --v=4
+        - --logtostderr=true
+        - --balance-similar-node-groups=true
+        - --scale-down-delay-after-add=5m
+        - --scale-down-unneeded-time=5m
+        resources:
+          limits:
+            cpu: 200m
+            memory: 300Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        # Mount Kubeconfig of workload cluster
+        volumeMounts:
+        - mountPath: /mnt/kubeconfig
+          name: kubeconfig
+          readOnly: true
+      serviceAccountName: febri4n-nyoba-capi-kamaji
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+      volumes:
+        - name: kubeconfig
+          secret:
+            secretName: febri4n-nyoba-capi-kamaji-kubeconfig
+            items:
+              - key: value
+                path: febri4n-nyoba-capi-kamaji.kubeconfig
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: febri4n-nyoba-capi-kamaji-workload
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: febri4n-nyoba-capi-kamaji-workload
+subjects:
+- kind: ServiceAccount
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: febri4n-nyoba-capi-kamaji-management
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: febri4n-nyoba-capi-kamaji-management
+subjects:
+- kind: ServiceAccount
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: febri4n-nyoba-capi-kamaji
+  namespace: default
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: febri4n-nyoba-capi-kamaji-workload
+rules:
+  - apiGroups:
+    - ""
+    resources:
+    - namespaces
+    - persistentvolumeclaims
+    - persistentvolumes
+    - pods
+    - replicationcontrollers
+    - services
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - nodes
+    verbs:
+    - get
+    - list
+    - update
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - pods/eviction
+    verbs:
+    - create
+  - apiGroups:
+    - policy
+    resources:
+    - poddisruptionbudgets
+    verbs:
+    - list
+    - watch
+  - apiGroups:
+    - storage.k8s.io
+    resources:
+    - csinodes
+    - storageclasses
+    - csidrivers
+    - csistoragecapacities
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - batch
+    resources:
+    - jobs
+    verbs:
+    - list
+    - watch
+  - apiGroups:
+    - apps
+    resources:
+    - daemonsets
+    - replicasets
+    - statefulsets
+    verbs:
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - create
+    - patch
+  - apiGroups:
+    - ""
+    resources:
+    - configmaps
+    verbs:
+    - create
+    - delete
+    - get
+    - update
+  - apiGroups:
+    - coordination.k8s.io
+    resources:
+    - leases
+    verbs:
+    - create
+    - get
+    - update
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: febri4n-nyoba-capi-kamaji-management
+rules:
+  - apiGroups:
+    - cluster.x-k8s.io
+    resources:
+    - machinedeployments
+    - machinedeployments/scale
+    - machines
+    - machinesets
+    - machinepools
+    verbs:
+    - get
+    - list
+    - update
+    - watch
+  - apiGroups:
+    - infrastructure.cluster.x-k8s.io
+    resources:
+    - openstackmachinetemplates
+    verbs:
+    - get
+    - list
+    - update
+    - watch
