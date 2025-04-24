@@ -1,24 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: cpu-stress
   labels:
-    app: hello-node
-  name: hello-node
-  namespace: default
+    app: cpu-stress
 spec:
-  replicas: 1 #Change this to 40 or etc
+  replicas: 1 # ganti ini ke 50 untuk testing
   selector:
     matchLabels:
-      app: hello-node
+      app: cpu-stress
   template:
     metadata:
       labels:
-        app: hello-node
+        app: cpu-stress
     spec:
       containers:
-      - image: quay.io/google-containers/pause-amd64:3.0
-        imagePullPolicy: IfNotPresent
-        name: pause-amd64
+      - name: stress
+        image: vish/stress
         resources:
           limits:
-            cpu: 500m
+            cpu: "500m"
+          requests:
+            cpu: "200m"
+        args:
+        - -cpus
+        - "2"
