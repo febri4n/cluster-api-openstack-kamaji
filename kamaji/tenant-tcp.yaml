@@ -16,6 +16,8 @@ spec:
       cgroupfs: systemd
       preferredAddressTypes:
       - InternalIP
+      - ExternalIP
+      - Hostname
   networkProfile:
     port: 6443
   addons:
