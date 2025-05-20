@@ -1,0 +1,35 @@
+apiVersion: kamaji.clastix.io/v1alpha1
+kind: TenantControlPlane
+metadata:
+  name: tenant-np-satu
+  namespace: default
+spec:
+  dataStore: kamaji-etcd
+  controlPlane:
+    deployment:
+      replicas: 3
+    service:
+      serviceType: NodePort
+  kubernetes:
+    version: "v1.30.2"
+    kubelet:
+      cgroupfs: systemd
+      preferredAddressTypes:
+      - InternalIP
+      - ExternalIP
+      - Hostname
+  networkProfile:
+    address: 10.10.10.10 # Haproxy satu 
+    port: 30405 # Kubernetes API
+    certSANs:
+    - 10.11.11.10 # Haproxy satu
+    - 10.10.10.10 # Haproxy dua
+    - nodeport-satu.kamaji.febri4n.my.id # Domain di cloudflare
+  addons:
+    coreDNS: {}
+    kubeProxy: {}
+    konnectivity:
+      server:
+        port: 30105 # Konnectivity
+        resources: {}
+      agent: {}
